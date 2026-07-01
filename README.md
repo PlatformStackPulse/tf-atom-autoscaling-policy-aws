@@ -3,9 +3,33 @@
 [![CI](https://github.com/PlatformStackPulse/tf-atom-autoscaling-policy-aws/actions/workflows/ci.yml/badge.svg)](https://github.com/PlatformStackPulse/tf-atom-autoscaling-policy-aws/actions/workflows/ci.yml)
 ![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.6.0-blueviolet)
 
-## Purpose
+Terraform atom that defines an AWS Auto Scaling policy (`aws_autoscaling_policy`) for an Auto Scaling group, using the [tf-label](https://github.com/PlatformStackPulse/tf-label) module for consistent naming and the `enabled` toggle.
 
-Terraform atom: AWS Auto Scaling Policy - defines scaling behavior for an ASG.
+## Features
+
+- **Target tracking scaling** — default `policy_type = "TargetTrackingScaling"` with a predefined metric specification (`ASGAverageCPUUtilization` by default) and a configurable `target_value`.
+- **Simple / step scaling** — supports `SimpleScaling` and `StepScaling` via `adjustment_type`, `scaling_adjustment`, and `cooldown`.
+- **Consistent naming** — the policy name is derived from the tf-label `id` (`namespace-stage-name`, e.g. `eg-test-thing`).
+- **Enable/disable toggle** — set `enabled = false` to create no resources (all outputs return `null`).
+- **Validated inputs** — `autoscaling_group_name` must be non-empty; `policy_type` is constrained to the three valid AWS values.
+
+## Usage
+
+```hcl
+module "cpu_scaling_policy" {
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-autoscaling-policy-aws.git?ref=v1.0.0"
+
+  namespace = "eg"
+  stage     = "prod"
+  name      = "web"
+
+  autoscaling_group_name = module.web_asg.name
+
+  policy_type            = "TargetTrackingScaling"
+  predefined_metric_type = "ASGAverageCPUUtilization"
+  target_value           = 70
+}
+```
 
 ## Module Documentation
 
@@ -72,3 +96,22 @@ Terraform atom: AWS Auto Scaling Policy - defines scaling behavior for an ASG.
 | <a name="output_enabled"></a> [enabled](#output\_enabled) | Whether the module is enabled |
 | <a name="output_name"></a> [name](#output\_name) | Name of the scaling policy |
 <!-- END_TF_DOCS -->
+
+## Tests
+
+Unit tests use a mock AWS provider (no real cloud calls) and assert on plan-known values (tf-label id, resource count, input pass-throughs):
+
+```bash
+terraform init -backend=false
+terraform test -test-directory=tests/unit
+# or
+make test-unit
+```
+
+Integration tests (require AWS credentials) live under `tests/integration/`:
+
+```bash
+terraform test -test-directory=tests/integration
+# or
+make test-integration
+```
